@@ -106,6 +106,14 @@ class TodoServiceImplTest(
 
 
     }
+    @Test
+    fun `can find all incomplete`(){
+        val aCompletedTodo: TodoEntity = aTodo(completed = false)
+        every { todoRepository.findAllByCompleted(false) } returns listOf(aCompletedTodo)
+
+        val result: List<TodoEntity> = todoService.getByCompleted(false)
+        assertThat(result).containsExactly(aCompletedTodo)
+    }
 
 
 }

@@ -14,6 +14,10 @@ import org.springframework.test.web.servlet.put
 import zatecwork.demo.Controller.TodoRequest
 import zatecwork.demo.persistence.TodoEntity
 import zatecwork.demo.persistence.TodoRepository
+import com.fasterxml.jackson.module.kotlin.readValue
+import org.hamcrest.Matchers
+import org.springframework.test.web.servlet.get
+import zatecwork.demo.Controller.TodoResponse
 
 
 @AutoConfigureMockMvc
@@ -22,53 +26,75 @@ class TodoControllerTest(
     @Autowired private val mockMvc: MockMvc,
     @Autowired private val todoRepository: TodoRepository
 ) {
-   private fun aTodo(
-       task: String = "a sample task",
-       completed: Boolean= false
-   )  = TodoEntity(
-       task =  task,
-       completed = completed
-   )
-     private val testData = listOf(
-         aTodo(task="cleaning up", completed = true),
-         aTodo(task = "cooking a meal"),
-         aTodo(task = "coding kotlin")
-     )
+
+    @BeforeEach
+    fun clearDatabase() {
+        todoRepository.deleteAll()
+    }
+
+    private fun aTodo(
+        task: String = "a sample task",
+        completed: Boolean = false
+    ) = TodoEntity(
+        task = task,
+        completed = completed
+    )
+
+    private val testData = listOf(
+        aTodo(task = "cleaning up", completed = true),
+        aTodo(task = "cooking a meal"),
+        aTodo(task = "coding kotlin"),
+    )
+
+    @Test
+    fun `can put todo`() {
+        mockMvc.put("/todo") {
+            contentType = MediaType.APPLICATION_JSON
+            content = TodoRequest(task = "test").asJsonString()
+        }.andExpect {
+            status { isOk() }
+        }
+    }
+
+    private fun TodoRequest.asJsonString() =
+        jacksonObjectMapper().writeValueAsString(this)
 
     @Test
     fun `can remove todo`() {
-            val persistedTestData = todoRepository.saveAll(testData)
+        val persistedTestData = todoRepository.saveAll(testData)
 
         mockMvc.delete("/todo/${persistedTestData.last().id}")
             .andExpect {
-                status {isOk()}
+                status { isOk() }
             }
-
         Assertions.assertThat(todoRepository.findAll().map { it.task })
             .containsExactly(
                 persistedTestData[0].task,
-                persistedTestData[1].task
+                persistedTestData[1].task,
             )
     }
 
     @Test
-    fun `can put todo `() {
-            // given
-            mockMvc.put("/todo") {
-                contentType = MediaType.APPLICATION_JSON
-                content = TodoRequest(task ="test").asJsonString()
-            }.andExpect {
-                status {isOk()}
+    fun `can get all todo`() {
+        val responseBody = mockMvc.get("/todo/all")
+            .andExpect {
+                status { isOk() }
+            }.andReturn().response.let {
+                jacksonObjectMapper().readValue<List<TodoResponse>>(it.contentAsString)
             }
-
+        Assertions.assertThat(responseBody.size).isGreaterThanOrEqualTo(3)
     }
 
-    @BeforeEach
-    fun clearData() {
-        todoRepository.deleteAll()
+    @Test
+    fun `can a todo by id`() {
+        val persistedTestData: MutableList<TodoEntity> = todoRepository.saveAll(testData)
+
+        mockMvc.get("/todo/${persistedTestData[1].id}")
+            .andExpect {
+                status { isOk() }
+                content {
+                    jsonPath("task", Matchers.containsString("cooking a meal"))
+                }
+            }
     }
-
-
-    private fun TodoRequest.asJsonString() =
-        jacksonObjectMapper().writeValueAsString(this)
 }

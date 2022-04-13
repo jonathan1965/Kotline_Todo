@@ -1,6 +1,6 @@
 package zatecwork.demo.Controller
 
-import com.sun.tools.javac.comp.Todo
+//import com.sun.tools.javac.comp.Todo
 import org.springframework.web.bind.annotation.*
 import zatecwork.demo.persistence.TodoEntity
 import zatecwork.demo.service.TodoService
@@ -27,29 +27,30 @@ class TodoController(
     ){
         todoService.createOrUpdate(todoRequest.toEntity())
     }
+
+    @GetMapping("/incomplete")
+    fun getIncompleteTodo(): List<TodoResponse> = todoService.getByCompleted(completed = false).toResponse()
 }
 
 
 data class TodoRequest(
     val task: String,
     val completed: Boolean = false
-
 ) {
-     fun toEntity() = TodoEntity (
-         task = task,
-         completed = completed
-     )
-
-    data class TodoResponse(
-        val id:Int,
-        val task: String,
-        val completed: Boolean,
-
-    ) {
-        fun TodoEntity.toResponse() =
-            TodoResponse(id, task, completed)
-        fun List<TodoEntity>.toResponse()  =
-            map { it.toResponse() }
-    }
-
+    fun toEntity() = TodoEntity(
+        task = task,
+        completed = completed
+    )
 }
+
+data class TodoResponse(
+    val id: Int,
+    val task: String,
+    val completed: Boolean,
+)
+
+fun TodoEntity.toResponse() =
+    TodoResponse(id, task, completed)
+
+fun List<TodoEntity>.toResponse() =
+    map { it.toResponse() }
